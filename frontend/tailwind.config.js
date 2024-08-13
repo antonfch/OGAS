@@ -14,6 +14,7 @@ const config = {
 			}
 		},
 		extend: {
+			display: ["group-hover"],
 			colors: {
 				border: "hsl(var(--border) / <alpha-value>)",
 				input: "hsl(var(--input) / <alpha-value>)",
