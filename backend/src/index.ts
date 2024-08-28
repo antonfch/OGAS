@@ -1,9 +1,11 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
-
 import { createClient } from "@supabase/supabase-js";
 import * as dotenv from "dotenv";
 import bodyParser from "body-parser";
+import { RoomManager } from "./room/RoomManager";
+
+
 
 dotenv.config();
 
@@ -18,14 +20,15 @@ const supabaseUrl = process.env.SUPABASE_URL as string;
 const supabaseKey = process.env.SUPABASE_ANON_KEY as string;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-app.get("/Test", async (req: Request, res: Response) => {
-  const { data: test2, error } = await supabase.from("test2").select();
-  if (error) {
-    return res.status(400).json(error);
-  }
-  return res.status(200).json(test2);
-});
+const roomManager = new RoomManager(supabase);
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+app.listen(port, async () => {
+    console.log(`Server is running on port ${port}`);
+
+    // Rooms testing
+    console.log(await roomManager.createNewRoomId());
+    console.log(await roomManager.createNewRoomId());
+    console.log(await roomManager.createNewRoomId());
+
+    process.exit(0);
 });
