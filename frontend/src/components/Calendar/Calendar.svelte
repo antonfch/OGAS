@@ -6,13 +6,7 @@
   import ChevronLeft from "lucide-svelte/icons/chevron-left";
   import ChevronRight from "lucide-svelte/icons/chevron-right";
   import interact from "interactjs";
-  import {
-    onMount,
-    afterUpdate,
-    getContext,
-    beforeUpdate,
-    setContext,
-  } from "svelte";
+  import { onMount } from "svelte";
   import { get } from "svelte/store";
 
   const semaine = [
@@ -48,6 +42,8 @@
   let time = new Time(5);
   let listHours: any[] = [];
   let inputHours: any[] = [];
+  let storetoHour: string = "";
+  let storeHour: string = "";
 
   for (let i = 0; i < 24; i++) {
     listHours.push(time.add({ hours: i }).toString());
@@ -69,7 +65,7 @@
         day: fulldatesplit[2],
         month: fulldatesplit[1],
         event: Event,
-        hours: inputHours,
+
         id: date.add({ days: i }).toString(),
       };
       list[i] = obj;
@@ -78,27 +74,22 @@
 
   function addEvent(id: string, hour: string, tohour: string) {
     let index = list.findIndex((item) => item.id === id);
+    storetoHour = tohour;
+    storeHour = hour;
 
     let obj = {
       id: Math.random().toString(16).slice(2),
       day: id,
-      hour: hour,
-      tohour: tohour,
+      hour: storeHour,
+      tohour: storetoHour,
     };
-    list[index].event = Event;
+
     Event.push(obj);
+    list[index].event = Event;
 
     clickedButtons.add(`${id}-${hour}`);
     clickedButtons = clickedButtons;
-
-    console.log(list);
-  }
-
-  function modifyEvent(id: string, hour: string, newToHour: string) {
-    let event = Event.find((e) => e.id === id && e.hour === hour);
-    if (event) {
-      event.tohour = newToHour;
-    }
+    console.log(storetoHour);
   }
 
   function nextWeek() {
@@ -115,36 +106,77 @@
 
   onMount(() => {
     updateList();
-    var x = 0;
-    var y = 0;
+
     interact(".Expand").resizable({
-      edges: { bottom: true },
+      edges: {
+        bottom: ".edge-bottom",
+      },
+
       modifiers: [
         interact.modifiers.snapSize({
-          targets: [
-            { width: 25 },
-            interact.snappers.grid({ width: 25, height: 25 }),
-          ],
+          targets: [interact.snappers.grid({ width: 20, height: 20 })],
+        }),
+        interact.modifiers.restrictRect({
+          restriction: ".Limit",
         }),
       ],
 
       listeners: {
         move: function (event) {
-          let { x, y } = event.target.dataset;
+          let { y } = event.target.dataset;
+          let position = inputHours.findIndex((hour) => hour === storetoHour);
 
-          x = (parseFloat(x) || 0) + event.deltaRect.left;
-          y = (parseFloat(y) || 0) + event.deltaRect.top;
+          if (event.deltaRect.width > 0 || event.deltaRect.height > 0) {
+            position++;
+
+            storetoHour = inputHours[position];
+            updateList();
+          } else if (event.deltaRect.width < 0 || event.deltaRect.height < 0) {
+            position--;
+
+            storetoHour = inputHours[position];
+            updateList();
+          }
 
           Object.assign(event.target.style, {
-            width: `${event.rect.width}px`,
             height: `${event.rect.height}px`,
-            transform: `translate(${x}px, ${y}px)`,
+            transform: `translate( ${y}px)`,
           });
 
-          Object.assign(event.target.dataset, { x, y });
+          Object.assign(event.target.dataset, { y });
         },
       },
     });
+  });
+  interact(".Draggable").draggable({
+    startAxis: "y",
+    lockAxis: "y",
+    modifiers: [
+      interact.modifiers.snapSize({
+        targets: [interact.snappers.grid({ width: 20, height: 20 })],
+      }),
+      interact.modifiers.restrictRect({
+        restriction: ".Limit",
+      }),
+    ],
+    listeners: {
+      move(event) {
+        let { x, y } = event.target.dataset;
+        let tohourPosition = inputHours.findIndex(
+          (hour) => hour === storetoHour
+        );
+        let hourPosition = inputHours.findIndex((hour) => hour === storeHour);
+
+        x = (parseFloat(x) || 0) + event.dx;
+        y = (parseFloat(y) || 0) + event.dy;
+
+        Object.assign(event.target.style, {
+          transform: `translate(${x}px, ${y}px)`,
+        });
+
+        Object.assign(event.target.dataset, { y });
+      },
+    },
   });
 </script>
 
@@ -191,57 +223,72 @@
             </p>
           </div>
           <div class="flex">
-            <div>
+            <div class="Limit">
               {#each inputHours as inputHour, index}
                 <div
                   class={Math.floor(index - 1) % 2 === 0
-                    ? "border-b border-border bg-input border-r bg-opacity-35 h-5 w-10 flex justify-center"
-                    : "bg-input border-border border-r bg-opacity-35 h-5 w-10 flex justify-center"}
+                    ? "  border-b border-border bg-input border-r bg-opacity-35 h-5 w-10 flex justify-center"
+                    : " bg-input border-border border-r bg-opacity-35 h-5 w-10 flex justify-center"}
                 >
                   <div>
-                    <FlowButton>
-                      <div
-                        class="Event rounded-full transition-opacity opacity-0 hover:opacity-50 flex flex-col items-center justify-center mt-1"
-                        class:opacity-100={clickedButtons.has(
-                          `${day.id}-${inputHour}`
-                        )}
-                        class:hover:opacity-50={!clickedButtons.has(
-                          `${day.id}-${inputHour}`
-                        )}
-                        class:z-10={clickedButtons.has(
-                          `${day.id}-${inputHour}`
-                        )}
-                      >
-                        <button
-                          class=" bg-white rounded-full"
-                          on:click={() => {
-                            addEvent(day.id, inputHour, inputHours[index + 2]);
-                          }}
-                        >
-                          <Avatar.Root>
-                            <Avatar.Image
-                              src="https://github.com/shadcn.png"
-                              alt="@shadcn"
-                            />
-                            <Avatar.Fallback>CN</Avatar.Fallback>
-                          </Avatar.Root>
-                        </button>
+                    <div
+                      class="Event Draggable relative rounded-full transition-opacity opacity-0 hover:opacity-50 flex flex-col items-center justify-center mt-1"
+                      class:opacity-100={clickedButtons.has(
+                        `${day.id}-${inputHour}`
+                      )}
+                      class:hover:opacity-50={!clickedButtons.has(
+                        `${day.id}-${inputHour}`
+                      )}
+                      class:z-10={clickedButtons.has(`${day.id}-${inputHour}`)}
+                    >
+                      <FlowButton>
+                        <div class="flex flex-col items-center">
+                          <button
+                            class=" bg-white rounded-full"
+                            on:click={() => {
+                              addEvent(
+                                day.id,
+                                inputHour,
+                                inputHours[index + 2]
+                              );
+                            }}
+                          >
+                            <Avatar.Root>
+                              <Avatar.Image
+                                src="https://github.com/shadcn.png"
+                                alt="@shadcn"
+                              />
+                              <Avatar.Fallback>CN</Avatar.Fallback>
+                            </Avatar.Root>
+                          </button>
 
-                        <button class="Expand bg-white p-1 h-4 w-2" />
-                        <button class=" bg-white p-2 rounded-full h-full w-2" />
-                      </div>
-                    </FlowButton>
-                    {#if clickedButtons.has(`${day.id}-${inputHour}`)}
-                      <Tooltip class=" bg-white p-1 rounded-xl ">
-                        {#each day.event as event}
-                          {#if event.hour === inputHour && event.day === day.id}
-                            <p class="text-xs text-black z-0">
-                              {event.hour} - {event.tohour}
-                            </p>
-                          {/if}
-                        {/each}
-                      </Tooltip>
-                    {/if}
+                          <div class="Expand relative bg-white p-1 h-5 w-2">
+                            <div
+                              class=" absolute bottom-[-15px] right-[-4px] edge-bottom p-2 bg-white rounded-full"
+                            />
+                          </div>
+                        </div>
+                      </FlowButton>
+                      {#if clickedButtons.has(`${day.id}-${inputHour}`)}
+                        <Tooltip class=" bg-white p-1 rounded-xl ">
+                          {#each day.event as event}
+                            {#if event.hour === inputHour && event.day === day.id}
+                              <div class="flex">
+                                <p class="text-xs text-black z-0">
+                                  {event.hour}
+                                </p>
+                                <p class="text-xs text-black z-0">-</p>
+                                <p
+                                  contenteditable="true"
+                                  bind:textContent={storetoHour}
+                                  class="text-xs text-black z-0"
+                                />
+                              </div>
+                            {/if}
+                          {/each}
+                        </Tooltip>
+                      {/if}
+                    </div>
                   </div>
                 </div>
               {/each}
